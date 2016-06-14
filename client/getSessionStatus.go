@@ -2,6 +2,7 @@ package combatClient
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -10,7 +11,14 @@ import (
 	"strconv"
 )
 
-func (t *CombatClient) getSessionStatusJSON(sessionID string) (bool, string, error) {
+type SessionStatus struct {
+	Finished           bool
+	TotalCasesCount    int
+	FinishedCasesCount int
+	FailReports        []string
+}
+
+func (t *CombatClient) getSessionStatusJSON(sessionID string) (string, error) {
 	bodyBuf := &bytes.Buffer{}
 	bodyWriter := multipart.NewWriter(bodyBuf)
 	bodyWriter.WriteField("sessionID", sessionID)
@@ -19,22 +27,52 @@ func (t *CombatClient) getSessionStatusJSON(sessionID string) (bool, string, err
 
 	resp, err := http.Post(t.serverURL+"/getSessionStatus", contentType, bodyBuf)
 	if err != nil {
-		return false, err.Error(), err
+		return err.Error(), err
 	}
 	body, err := ioutil.ReadAll(resp.Body)
-	finishedString := resp.Header.Get("Finished")
-	finished := false
-	if finishedString == "True" {
-		finished = true
-	}
 
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		fmt.Println("Fail: incorrect request status - " + strconv.Itoa(resp.StatusCode))
-		return false, "Incorrect request status: " + strconv.Itoa(resp.StatusCode), errors.New("Incorrect request status: " + strconv.Itoa(resp.StatusCode))
-	} else {
-		fmt.Println(string(body))
+		return "Incorrect request status: " + strconv.Itoa(resp.StatusCode), errors.New("Incorrect request status: " + strconv.Itoa(resp.StatusCode))
 	}
+	return string(body), nil
+}
 
-	return finished, string(body), nil
+func (t *CombatClient) printSessionStatusByJSON(sessionStatusJSON string) (bool, int, error) {
+	var sessionStatus SessionStatus
+	err := json.Unmarshal([]byte(sessionStatusJSON), &sessionStatus)
+	if err != nil {
+		fmt.Println("Cannot parse session status JSON")
+		fmt.Println(err.Error())
+		return false, 1, err
+	}
+	if !sessionStatus.Finished {
+		if sessionStatus.TotalCasesCount == 0 {
+			fmt.Println("Cases exploring")
+		} else {
+			fmt.Print("Testing (" + strconv.Itoa(sessionStatus.FinishedCasesCount) + "/" + strconv.Itoa(sessionStatus.TotalCasesCount) + ")")
+
+			if len(sessionStatus.FailReports) != 0 {
+				fmt.Print(" " + strconv.Itoa(len(sessionStatus.FailReports)) + " errors:")
+			}
+			fmt.Println()
+
+			for _, curFail := range sessionStatus.FailReports {
+				fmt.Println("    " + curFail)
+			}
+			if len(sessionStatus.FailReports) != 0 {
+				fmt.Println()
+			}
+		}
+	} else { // if session finished
+		if len(sessionStatus.FailReports) == 0 { // if no errors
+			fmt.Println("Finished success")
+		} else {
+			fmt.Println("Finished with " + strconv.Itoa(len(sessionStatus.FailReports)) + " errors:")
+			for _, curFail := range sessionStatus.FailReports {
+				fmt.Println("    " + curFail)
+			}
+		}
+	}
+	return sessionStatus.Finished, len(sessionStatus.FailReports), nil
 }
