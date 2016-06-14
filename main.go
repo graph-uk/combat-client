@@ -24,5 +24,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	client.GetSessionResult(sessionID)
+	os.Exit(client.GetSessionResult(sessionID))
 }

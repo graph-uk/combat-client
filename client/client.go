@@ -41,8 +41,6 @@ func (t *CombatClient) packTests() (string, error) {
 		panic(err)
 	}
 	tmpFile.Close()
-	//	fmt.Println(tmpFile.Name())
-	//	tmpFile.Close()
 	zipit("./../..", tmpFile.Name())
 	return tmpFile.Name(), nil
 }
@@ -103,16 +101,21 @@ func (t *CombatClient) CreateNewSession(timeoutMinutes int) (string, error) {
 }
 
 func (t *CombatClient) GetSessionResult(sessionID string) int {
+	countOfErrors := 1
 	for {
-		finished, _, err := t.getSessionStatusJSON(sessionID)
+		sessionStatusJSON, err := t.getSessionStatusJSON(sessionID)
 		if err != nil {
 			fmt.Println(err.Error())
 		}
-		if finished {
-			break
+		var finished bool
+		finished, countOfErrors, err = t.printSessionStatusByJSON(sessionStatusJSON)
+		if err == nil {
+			if finished {
+				break
+			}
 		}
 		time.Sleep(5 * time.Second)
 	}
 	fmt.Println("Time of testing: " + time.Since(t.sessionBeginTimestamp).String())
-	return 0
+	return countOfErrors
 }
