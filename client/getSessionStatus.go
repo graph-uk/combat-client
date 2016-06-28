@@ -44,6 +44,7 @@ func (t *CombatClient) printSessionStatusByJSON(sessionStatusJSON string) (bool,
 	if err != nil {
 		fmt.Println("Cannot parse session status JSON")
 		fmt.Println(err.Error())
+		fmt.Println(sessionStatusJSON)
 		return false, 1, err
 	}
 	if !sessionStatus.Finished {
@@ -67,11 +68,12 @@ func (t *CombatClient) printSessionStatusByJSON(sessionStatusJSON string) (bool,
 	} else { // if session finished
 		if len(sessionStatus.FailReports) == 0 { // if no errors
 			fmt.Println("Finished success")
-		} else {
+		} else { // if errors found
 			fmt.Println("Finished with " + strconv.Itoa(len(sessionStatus.FailReports)) + " errors:")
 			for _, curFail := range sessionStatus.FailReports {
 				fmt.Println("    " + curFail)
 			}
+			fmt.Println("More info at: "+t.serverURL+"/sessions/"+t.sessionID)
 		}
 	}
 	return sessionStatus.Finished, len(sessionStatus.FailReports), nil

@@ -95,8 +95,14 @@ func (t *CombatClient) CreateNewSession(timeoutMinutes int) (string, error) {
 	}
 	//os.Exit(0)
 	sessionName := t.createSessionOnServer(testsArchiveFileName)
-	fmt.Println("Session: " + sessionName)
-
+	//fmt.Println("Session: " + sessionName)
+	combatServerURL, err := t.getServerUrlFromCLI()
+	if err != nil {
+		fmt.Println("Cannot parse server name as parameter")
+		return "", err
+	}
+	fmt.Println("Session status: " + combatServerURL + "/sessions/" + sessionName)
+	t.sessionID = sessionName
 	return sessionName, nil
 }
 
