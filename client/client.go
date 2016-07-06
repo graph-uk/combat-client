@@ -3,9 +3,9 @@ package combatClient
 import (
 	"errors"
 	"fmt"
-	"os"
-	//"strconv"
 	"io/ioutil"
+	"os"
+	"regexp"
 	"time"
 )
 
@@ -13,6 +13,7 @@ type CombatClient struct {
 	serverURL             string
 	sessionID             string
 	sessionBeginTimestamp time.Time
+	lastSTDOutMessage     string
 }
 
 func (t *CombatClient) getServerUrlFromCLI() (string, error) {
@@ -30,7 +31,7 @@ func NewCombatClient() (*CombatClient, error) {
 	if err != nil {
 		return &result, err
 	}
-
+	result.lastSTDOutMessage = ""
 	return &result, nil
 }
 
@@ -95,8 +96,14 @@ func (t *CombatClient) CreateNewSession(timeoutMinutes int) (string, error) {
 	}
 	//os.Exit(0)
 	sessionName := t.createSessionOnServer(testsArchiveFileName)
-	fmt.Println("Session: " + sessionName)
-
+	//fmt.Println("Session: " + sessionName)
+	combatServerURL, err := t.getServerUrlFromCLI()
+	if err != nil {
+		fmt.Println("Cannot parse server name as parameter")
+		return "", err
+	}
+	fmt.Println("Session status: " + combatServerURL + "/sessions/" + sessionName)
+	t.sessionID = sessionName
 	return sessionName, nil
 }
 
@@ -116,6 +123,12 @@ func (t *CombatClient) GetSessionResult(sessionID string) int {
 		}
 		time.Sleep(5 * time.Second)
 	}
-	fmt.Println("Time of testing: " + time.Since(t.sessionBeginTimestamp).String())
+
+	// cut microseconds
+	timeLongStr := time.Since(t.sessionBeginTimestamp).String()
+	r := regexp.MustCompile(`\.\d*s$`)
+	timeShortStr := r.ReplaceAllString(timeLongStr, "s")
+
+	fmt.Println("Time of testing: " + timeShortStr)
 	return countOfErrors
 }

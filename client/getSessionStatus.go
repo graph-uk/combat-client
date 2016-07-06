@@ -39,40 +39,54 @@ func (t *CombatClient) getSessionStatusJSON(sessionID string) (string, error) {
 }
 
 func (t *CombatClient) printSessionStatusByJSON(sessionStatusJSON string) (bool, int, error) {
+	msg := ""
 	var sessionStatus SessionStatus
 	err := json.Unmarshal([]byte(sessionStatusJSON), &sessionStatus)
 	if err != nil {
-		fmt.Println("Cannot parse session status JSON")
-		fmt.Println(err.Error())
+		msg += ("Cannot parse session status JSON\r\n")
+		msg += (err.Error() + "\r\n")
+		msg += (sessionStatusJSON)
+		if t.lastSTDOutMessage != msg {
+			t.lastSTDOutMessage = msg
+			fmt.Println()
+			fmt.Print(msg)
+		} else {
+			fmt.Print(`.`)
+		}
 		return false, 1, err
 	}
 	if !sessionStatus.Finished {
 		if sessionStatus.TotalCasesCount == 0 {
-			fmt.Println("Cases exploring")
+			msg += ("Cases exploring")
 		} else {
-			fmt.Print("Testing (" + strconv.Itoa(sessionStatus.FinishedCasesCount) + "/" + strconv.Itoa(sessionStatus.TotalCasesCount) + ")")
+			msg += ("Testing (" + strconv.Itoa(sessionStatus.FinishedCasesCount) + "/" + strconv.Itoa(sessionStatus.TotalCasesCount) + ")")
 
 			if len(sessionStatus.FailReports) != 0 {
-				fmt.Print(" " + strconv.Itoa(len(sessionStatus.FailReports)) + " errors:")
+				msg += (" " + strconv.Itoa(len(sessionStatus.FailReports)) + " errors:")
+				msg += "\r\n"
 			}
-			fmt.Println()
 
 			for _, curFail := range sessionStatus.FailReports {
-				fmt.Println("    " + curFail)
-			}
-			if len(sessionStatus.FailReports) != 0 {
-				fmt.Println()
+				msg += ("    " + curFail + "\r\n")
 			}
 		}
 	} else { // if session finished
 		if len(sessionStatus.FailReports) == 0 { // if no errors
-			fmt.Println("Finished success")
-		} else {
-			fmt.Println("Finished with " + strconv.Itoa(len(sessionStatus.FailReports)) + " errors:")
+			msg += ("Finished success\r\n")
+		} else { // if errors found
+			msg += "Finished with " + strconv.Itoa(len(sessionStatus.FailReports)) + " errors:\r\n"
 			for _, curFail := range sessionStatus.FailReports {
-				fmt.Println("    " + curFail)
+				msg += ("    " + curFail + "\r\n")
 			}
+			msg += ("More info at: " + t.serverURL + "/sessions/" + t.sessionID + "\r\n")
 		}
+	}
+	if t.lastSTDOutMessage != msg {
+		t.lastSTDOutMessage = msg
+		fmt.Println()
+		fmt.Print(msg)
+	} else {
+		fmt.Print(`.`)
 	}
 	return sessionStatus.Finished, len(sessionStatus.FailReports), nil
 }
