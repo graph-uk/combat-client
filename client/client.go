@@ -62,21 +62,19 @@ func (t *CombatClient) getParams() string {
 }
 
 func (t *CombatClient) createSessionOnServer(archiveFileName string) string {
-	fmt.Println("Uploading session.")
+	fmt.Print("Uploading session")
 	sessionName := ""
 
 	var err error
-	for i := 1; i <= 10; i++ {
+	for true { // endless cycle for try upload tests.
 		sessionName, err = postSession(archiveFileName, t.getParams(), t.serverURL+"/createSession")
 		if err != nil {
+			fmt.Print(`.`)
 			time.Sleep(5 * time.Second)
-			fmt.Println(err.Error())
 		} else {
+			fmt.Println()
 			break
 		}
-	}
-	if err != nil {
-		fmt.Println("Cannot upload file. Check is server available.")
 	}
 	return sessionName
 }
