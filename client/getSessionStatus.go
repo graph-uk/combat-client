@@ -12,10 +12,11 @@ import (
 )
 
 type SessionStatus struct {
-	Finished           bool
-	TotalCasesCount    int
-	FinishedCasesCount int
-	FailReports        []string
+	Finished                  bool
+	TotalCasesCount           int
+	FinishedCasesCount        int
+	CasesExploringFailMessage string
+	FailReports               []string
 }
 
 func (t *CombatClient) getSessionStatusJSON(sessionID string) (string, error) {
@@ -71,14 +72,21 @@ func (t *CombatClient) printSessionStatusByJSON(sessionStatusJSON string) (bool,
 			}
 		}
 	} else { // if session finished
-		if len(sessionStatus.FailReports) == 0 { // if no errors
-			msg += ("Finished success\r\n")
-		} else { // if errors found
-			msg += "Finished with " + strconv.Itoa(len(sessionStatus.FailReports)) + " errors:\r\n"
-			for _, curFail := range sessionStatus.FailReports {
-				msg += ("    " + curFail + "\r\n")
+		if sessionStatus.CasesExploringFailMessage == "" {
+			if len(sessionStatus.FailReports) == 0 { // if no errors
+				msg += ("Finished success\r\n")
+			} else { // if errors found
+				msg += "Finished with " + strconv.Itoa(len(sessionStatus.FailReports)) + " errors:\r\n"
+				for _, curFail := range sessionStatus.FailReports {
+					msg += ("    " + curFail + "\r\n")
+				}
+				msg += ("More info at: " + t.serverURL + "/sessions/" + t.sessionID + "\r\n")
 			}
-			msg += ("More info at: " + t.serverURL + "/sessions/" + t.sessionID + "\r\n")
+		} else { // if session finished on failed cases exploring
+			msg += ("Cases exploring failed. Combat says: \r\n" + sessionStatus.CasesExploringFailMessage)
+			fmt.Println()
+			fmt.Print(msg)
+			return sessionStatus.Finished, 1, nil
 		}
 	}
 	if t.lastSTDOutMessage != msg {
