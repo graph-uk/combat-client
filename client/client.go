@@ -14,6 +14,7 @@ type CombatClient struct {
 	sessionID             string
 	sessionBeginTimestamp time.Time
 	lastSTDOutMessage     string
+	SessionTimeout        time.Duration
 }
 
 func (t *CombatClient) getServerUrlFromCLI() (string, error) {
@@ -81,6 +82,7 @@ func (t *CombatClient) createSessionOnServer(archiveFileName string) string {
 
 func (t *CombatClient) CreateNewSession(timeoutMinutes int) (string, error) {
 	t.sessionBeginTimestamp = time.Now()
+	t.SessionTimeout = time.Minute * time.Duration(timeoutMinutes)
 	err := t.cleanupTests()
 	if err != nil {
 		fmt.Println("Cannot cleanup tests")
@@ -118,6 +120,12 @@ func (t *CombatClient) GetSessionResult(sessionID string) int {
 			if finished {
 				break
 			}
+		}
+
+		if time.Since(t.sessionBeginTimestamp) > t.SessionTimeout {
+			fmt.Println(``)
+			fmt.Println(`Timeout was reached, but session is still not finished. Check workers and start new session.`)
+			os.Exit(1)
 		}
 		time.Sleep(5 * time.Second)
 	}
