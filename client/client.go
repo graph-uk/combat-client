@@ -68,7 +68,7 @@ func (t *CombatClient) createSessionOnServer(archiveFileName string) string {
 
 	var err error
 	for true { // endless cycle for try upload tests.
-		sessionName, err = postSession(archiveFileName, t.getParams(), t.serverURL+"/createSession")
+		sessionName, err = postSession(archiveFileName, t.getParams(), t.serverURL+"/api/v1/sessions")
 		if err != nil {
 			fmt.Print(`.`)
 			time.Sleep(5 * time.Second)

@@ -23,10 +23,9 @@ func (t *CombatClient) getSessionStatusJSON(sessionID string) (string, error) {
 	bodyBuf := &bytes.Buffer{}
 	bodyWriter := multipart.NewWriter(bodyBuf)
 	bodyWriter.WriteField("sessionID", sessionID)
-	contentType := bodyWriter.FormDataContentType()
 	bodyWriter.Close()
 
-	resp, err := http.Post(t.serverURL+"/getSessionStatus", contentType, bodyBuf)
+	resp, err := http.Post(t.serverURL+"/api/v1/sessions", "application/json", bodyBuf)
 	if err != nil {
 		return err.Error(), err
 	}

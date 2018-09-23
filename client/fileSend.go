@@ -2,57 +2,40 @@ package combatClient
 
 import (
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"mime/multipart"
 	"net/http"
-	"os"
 	"strconv"
 )
 
 func postSession(filename string, params string, targetUrl string) (string, error) {
+	fileContent, err := ioutil.ReadFile(filename)
 
-	bodyBuf := &bytes.Buffer{}
-	bodyWriter := multipart.NewWriter(bodyBuf)
-	// this step is very important
-	fileWriter, err := bodyWriter.CreateFormFile("uploadfile", filename)
-	if err != nil {
-		fmt.Println("error writing to buffer")
-		return "", err
-	}
-
-	// open file handle
-	fh, err := os.Open(filename)
-	if err != nil {
-		fmt.Println("error opening file")
-		return "", err
-	}
-
-	//iocopy
-	_, err = io.Copy(fileWriter, fh)
 	if err != nil {
 		return "", err
 	}
-	contentType := bodyWriter.FormDataContentType()
-	bodyWriter.WriteField("params", params)
 
-	bodyWriter.Close()
+	content := base64.StdEncoding.EncodeToString(fileContent)
 
-	resp, err := http.Post(targetUrl, contentType, bodyBuf)
+	json := fmt.Sprintf("{\"content\": \"%s\", \"arguments\":\"%s\"}", content, params)
+
+	body := bytes.NewBuffer([]byte(json))
+
+	resp, err := http.Post(targetUrl, "application/json", body)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
-	resp_body, err := ioutil.ReadAll(resp.Body)
+
+	responseBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
-	//fmt.Println(resp.Status)
-	//fmt.Println(string(resp_body))
+
 	if resp.StatusCode != 200 {
 		return "", errors.New("Incorrect request status: " + strconv.Itoa(resp.StatusCode))
 	}
-	return string(resp_body), nil
+	return string(responseBody), nil
 }
