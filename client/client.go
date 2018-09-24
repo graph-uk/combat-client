@@ -62,7 +62,7 @@ func (t *CombatClient) cleanupTests() error {
 func (t *CombatClient) getParams() string {
 	params := ""
 	for curArgIndex, curArg := range os.Args {
-		if curArgIndex > 1 {
+		if curArgIndex > 2 {
 			params += curArg + " "
 		}
 	}
