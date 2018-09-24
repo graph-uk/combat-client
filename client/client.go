@@ -24,6 +24,13 @@ func (t *CombatClient) getServerUrlFromCLI() (string, error) {
 	return os.Args[1], nil
 }
 
+func (t *CombatClient) getTestsFolder() string {
+	if len(os.Args) < 3 {
+		return "./../.."
+	}
+	return os.Args[2]
+}
+
 func NewCombatClient() (*CombatClient, error) {
 	var result CombatClient
 	var err error
@@ -43,7 +50,7 @@ func (t *CombatClient) packTests() (string, error) {
 		panic(err)
 	}
 	tmpFile.Close()
-	zipit("./../..", tmpFile.Name())
+	zipit(t.getTestsFolder(), tmpFile.Name())
 	return tmpFile.Name(), nil
 }
 
@@ -66,20 +73,16 @@ func (t *CombatClient) createSessionOnServer(archiveFileName string) string {
 	fmt.Print("Uploading session")
 	sessionName := ""
 
-	var err error
-	for true { // endless cycle for try upload tests.
-		sessionName, err = postSession(archiveFileName, t.getParams(), t.serverURL+"/api/v1/sessions")
-		if err != nil {
-			fmt.Print(`.`)
-			time.Sleep(5 * time.Second)
-		} else {
-			fmt.Println()
-			break
-		}
+	sessionName, err := postSession(archiveFileName, t.getParams(), t.serverURL+"/api/v1/sessions")
+
+	if err != nil {
+		return ""
 	}
+
 	return sessionName
 }
 
+// CreateNewSession ...
 func (t *CombatClient) CreateNewSession(timeoutMinutes int) (string, error) {
 	t.sessionBeginTimestamp = time.Now()
 	t.SessionTimeout = time.Minute * time.Duration(timeoutMinutes)
@@ -94,17 +97,16 @@ func (t *CombatClient) CreateNewSession(timeoutMinutes int) (string, error) {
 		fmt.Println("Cannot pack tests to zip archive")
 		return "", err
 	}
-	//os.Exit(0)
+
 	sessionName := t.createSessionOnServer(testsArchiveFileName)
-	//fmt.Println("Session: " + sessionName)
-	combatServerURL, err := t.getServerUrlFromCLI()
-	if err != nil {
-		fmt.Println("Cannot parse server name as parameter")
-		return "", err
+
+	if sessionName != "" {
+		fmt.Println("Session status: " + t.serverURL + "/sessions/" + sessionName)
+		t.sessionID = sessionName
+		return sessionName, nil
 	}
-	fmt.Println("Session status: " + combatServerURL + "/sessions/" + sessionName)
-	t.sessionID = sessionName
-	return sessionName, nil
+
+	return "", nil
 }
 
 func (t *CombatClient) GetSessionResult(sessionID string) int {

@@ -3,11 +3,9 @@ package combatClient
 import (
 	"bytes"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strconv"
 )
 
 func postSession(filename string, params string, targetUrl string) (string, error) {
@@ -34,8 +32,8 @@ func postSession(filename string, params string, targetUrl string) (string, erro
 		return "", err
 	}
 
-	if resp.StatusCode != 200 {
-		return "", errors.New("Incorrect request status: " + strconv.Itoa(resp.StatusCode))
+	if resp.StatusCode > 200 {
+		return "", fmt.Errorf("Incorrect request status: %d", resp.StatusCode)
 	}
 	return string(responseBody), nil
 }
