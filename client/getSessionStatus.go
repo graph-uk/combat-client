@@ -1,32 +1,25 @@
 package combatClient
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"mime/multipart"
 	"net/http"
 	"strconv"
 )
 
 type SessionStatus struct {
-	Finished                  bool
-	TotalCasesCount           int
-	FinishedCasesCount        int
-	CasesExploringFailMessage string
-	FailReports               []string
+	ID                  string
+	Status              string
+	SessionError        string
+	CasesCount          int
+	CasesProcessedCount int
+	CasesFailed         []string
 }
 
 func (t *CombatClient) getSessionStatusJSON(sessionID string) (string, error) {
-	bodyBuf := &bytes.Buffer{}
-	bodyWriter := multipart.NewWriter(bodyBuf)
-	bodyWriter.WriteField("sessionID", sessionID)
-	contentType := bodyWriter.FormDataContentType()
-	bodyWriter.Close()
-
-	resp, err := http.Post(t.serverURL+"/getSessionStatus", contentType, bodyBuf)
+	resp, err := http.Get(t.serverURL + "/api/v1/sessions")
 	if err != nil {
 		return err.Error(), err
 	}
@@ -56,45 +49,38 @@ func (t *CombatClient) printSessionStatusByJSON(sessionStatusJSON string) (bool,
 		}
 		return false, 1, err
 	}
-	if !sessionStatus.Finished {
-		if sessionStatus.TotalCasesCount == 0 {
-			msg += ("Cases exploring")
-		} else {
-			msg += ("Testing (" + strconv.Itoa(sessionStatus.FinishedCasesCount) + "/" + strconv.Itoa(sessionStatus.TotalCasesCount) + ")")
 
-			if len(sessionStatus.FailReports) != 0 {
-				msg += (" " + strconv.Itoa(len(sessionStatus.FailReports)) + " errors:")
-				msg += "\r\n"
-			}
-
-			for _, curFail := range sessionStatus.FailReports {
-				msg += ("    " + curFail + "\r\n")
-			}
-		}
-	} else { // if session finished
-		if sessionStatus.CasesExploringFailMessage == "" {
-			if len(sessionStatus.FailReports) == 0 { // if no errors
-				msg += ("Finished success\r\n")
-			} else { // if errors found
-				msg += "Finished with " + strconv.Itoa(len(sessionStatus.FailReports)) + " errors:\r\n"
-				for _, curFail := range sessionStatus.FailReports {
-					msg += ("    " + curFail + "\r\n")
-				}
-				msg += ("More info at: " + t.serverURL + "/sessions/" + t.sessionID + "\r\n")
-			}
-		} else { // if session finished on failed cases exploring
-			msg += ("Cases exploring failed. Combat says: \r\n" + sessionStatus.CasesExploringFailMessage)
-			fmt.Println()
-			fmt.Print(msg)
-			return sessionStatus.Finished, 1, nil
-		}
+	casesFailed := []string{}
+	if sessionStatus.CasesFailed != nil {
+		casesFailed = sessionStatus.CasesFailed
 	}
-	if t.lastSTDOutMessage != msg {
+
+	msg = fmt.Sprintf("%s - %s\nProcessed %d of %d tests", sessionStatus.ID, sessionStatus.Status, sessionStatus.CasesProcessedCount, sessionStatus.CasesCount)
+
+	if sessionStatus.Status == "Failed" || sessionStatus.Status == "Success" || sessionStatus.Status == "Incomplete" {
+		fmt.Println()
+		fmt.Print(msg)
+		if len(casesFailed) > 0 {
+			fmt.Println("Failed cases:")
+			for _, caseFailed := range casesFailed {
+				fmt.Println(caseFailed)
+			}
+		}
+
+		return true, len(casesFailed), nil
+	}
+
+	if sessionStatus.CasesCount == 0 {
+		msg = fmt.Sprintf("%s - %s\nCase exploring", sessionStatus.ID, sessionStatus.Status)
+	}
+
+	if msg != t.lastSTDOutMessage {
 		t.lastSTDOutMessage = msg
 		fmt.Println()
 		fmt.Print(msg)
 	} else {
-		fmt.Print(`.`)
+		fmt.Print(".")
 	}
-	return sessionStatus.Finished, len(sessionStatus.FailReports), nil
+
+	return false, len(casesFailed), nil
 }
