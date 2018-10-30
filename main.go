@@ -8,7 +8,6 @@ import (
 )
 
 func main() {
-	defaultSessionTimeout := 60 //minutes
 
 	client, err := combatClient.NewCombatClient()
 	if err != nil {
@@ -17,7 +16,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	sessionID, err := client.CreateNewSession(defaultSessionTimeout)
+	sessionID, err := client.CreateNewSession()
 	if err != nil {
 		fmt.Println("Cannot create combat session")
 		fmt.Println(err.Error())

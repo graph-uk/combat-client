@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"regexp"
+	"strconv"
 	"time"
 )
 
@@ -24,6 +25,15 @@ func (t *CombatClient) getServerUrlFromCLI() (string, error) {
 	return os.Args[1], nil
 }
 
+func (t *CombatClient) getSessionTimeoutFromCLI() (time.Duration, error) {
+	mins, err := strconv.Atoi(os.Args[3])
+	if err != nil {
+		return time.Millisecond, errors.New(`Cannot parse session timeout. It should be int.`)
+	}
+	result := time.Duration(mins) * time.Minute
+	return result, nil
+}
+
 func (t *CombatClient) getTestsFolder() string {
 	if len(os.Args) < 3 {
 		return "./../.."
@@ -39,6 +49,12 @@ func NewCombatClient() (*CombatClient, error) {
 	if err != nil {
 		return &result, err
 	}
+
+	result.SessionTimeout, err = result.getSessionTimeoutFromCLI()
+	if err != nil {
+		return &result, err
+	}
+
 	result.lastSTDOutMessage = ""
 	return &result, nil
 }
@@ -83,9 +99,8 @@ func (t *CombatClient) createSessionOnServer(archiveFileName string) string {
 }
 
 // CreateNewSession ...
-func (t *CombatClient) CreateNewSession(timeoutMinutes int) (string, error) {
+func (t *CombatClient) CreateNewSession() (string, error) {
 	t.sessionBeginTimestamp = time.Now()
-	t.SessionTimeout = time.Minute * time.Duration(timeoutMinutes)
 	err := t.cleanupTests()
 	if err != nil {
 		fmt.Println("Cannot cleanup tests")
